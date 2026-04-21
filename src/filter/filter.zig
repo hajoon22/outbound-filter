@@ -1,14 +1,5 @@
 const std = @import("std");
-
-const FilterType = enum {
-    port,
-    netmask,
-};
-
-const Protocol = enum(u8) {
-    udp = 17,
-    tcp = 6,
-};
+const parser = @import("parser.zig");
 
 fn read(io: std.Io, allocator: std.mem.Allocator, path: []const u8) !std.ArrayList([]const u8) {
     const data = try std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .unlimited);
@@ -33,39 +24,6 @@ fn read(io: std.Io, allocator: std.mem.Allocator, path: []const u8) !std.ArrayLi
     return results;
 }
 
-fn parse_filter_type(s: []const u8) !FilterType {
-    if (std.mem.eql(u8, s, "port")) return .port;
-    if (std.mem.eql(u8, s, "netmask")) return .netmask;
-
-    std.debug.print("{s}\n", .{s});
-
-    return error.InvalidFilterType;
-}
-
-fn parse_protocol(s: []const u8) !Protocol {
-    if (std.mem.eql(u8, s, "udp")) return .udp;
-    if (std.mem.eql(u8, s, "tcp")) return .tcp;
-
-    return error.InvalidProtocol;
-}
-
-fn parse_ipv4(s: []const u8) ![4]u8 {
-    const address = try std.Io.net.IpAddress.parse(s, 0);
-    return switch (address) {
-        .ip4 => |a| a.bytes,
-        .ip6 => error.IsNotIpv4,
-    };
-}
-
-fn parse_mask(s: []const u8) ![4]u8 {
-    if (std.mem.eql(u8, s, "32")) return .{ 255, 255, 255, 255 };
-    if (std.mem.eql(u8, s, "24")) return .{ 255, 255, 255, 0 };
-    if (std.mem.eql(u8, s, "16")) return .{ 255, 255, 0, 0 };
-    if (std.mem.eql(u8, s, "8")) return .{ 255, 0, 0, 0 };
-
-    return error.InvalidMask;
-}
-
 pub fn read_and_parse(io: std.Io, allocator: std.mem.Allocator, path: []const u8) !void {
     var lines = try read(io, allocator, path);
     defer {
@@ -78,16 +36,16 @@ pub fn read_and_parse(io: std.Io, allocator: std.mem.Allocator, path: []const u8
 
     for (lines.items, 0..) |line, i| {
         var parts = std.mem.splitScalar(u8, line, ':');
-        const filter_type = parse_filter_type(parts.next().?) catch |err| {
+        const filter_type = parser.parse_filter_type(parts.next().?) catch |err| {
             std.debug.print("{d}: invalid filter type\n", .{i});
             return err;
         };
 
         switch (filter_type) {
             .port => {
-                var protocol: Protocol = undefined;
+                var protocol: parser.Protocol = undefined;
                 if (parts.next()) |s| {
-                    protocol = parse_protocol(s) catch |err| {
+                    protocol = parser.parse_protocol(s) catch |err| {
                         std.debug.print("{d}: invalid protocol\n", .{i});
                         return err;
                     };
@@ -116,14 +74,14 @@ pub fn read_and_parse(io: std.Io, allocator: std.mem.Allocator, path: []const u8
                     return error.InvalidNetmask;
                 }
 
-                const address = parse_ipv4(netmask.next().?) catch |err| {
+                const address = parser.parse_ipv4(netmask.next().?) catch |err| {
                     std.debug.print("{d}: is not ipv4\n", .{i});
                     return err;
                 };
 
                 var mask: [4]u8 = undefined;
                 if (netmask.next()) |s| {
-                    mask = parse_mask(s) catch |err| {
+                    mask = parser.parse_mask(s) catch |err| {
                         std.debug.print("{d}: invalid mask\n", .{i});
                         return err;
                     };
