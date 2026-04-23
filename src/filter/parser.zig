@@ -10,17 +10,17 @@ pub const Protocol = enum(u8) {
     tcp = 6,
 };
 
-const PortFilter = struct {
+pub const PortFilter = struct {
     protocol: Protocol,
     port: u16,
 };
 
-const NetmaskFilter = struct {
+pub const NetmaskFilter = struct {
     address: [4]u8,
     mask: [4]u8,
 };
 
-const Result = union(enum) {
+pub const Result = union(enum) {
     port: PortFilter,
     netmask: NetmaskFilter,
 };
