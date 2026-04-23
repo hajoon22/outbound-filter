@@ -9,6 +9,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     if (std.mem.eql(u8, args[1], "add")) {
-        _ = try filter.parser.read_and_parse(init.io, init.arena.allocator(), args[2]);
+        var results = try filter.parser.read_and_parse(init.io, init.arena.allocator(), args[2]);
+        try filter.build_and_send(init.arena.allocator(), init.io, &results);
     }
 }
