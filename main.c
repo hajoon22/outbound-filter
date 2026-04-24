@@ -65,7 +65,7 @@ int parse_port_filter(char *token, struct port_filter *filter) {
     filter->protocol = parse_protocol(token);
     if (filter->protocol == 0) return -1;
 
-    token = strtok(NULL, ",");
+    token = strtok(NULL, ":");
     if (!token) return -1;
 
     filter->port = parse_port(token);
@@ -79,7 +79,7 @@ int parse_netmask_filter(char *token, struct netmask_filter *filter) {
     char *netmask = strtok(token, "/");
 
     filter->address = inet_addr(netmask);
-    if (filter->address < 0) return -1;
+    if (filter->address == INADDR_NONE) return -1;
     
     netmask = strtok(NULL, "/");
     if (!netmask) return -1;
@@ -99,9 +99,11 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
 
     struct filter *filters = NULL;
     while (getline(&buf, &buf_len, fp) != -1) {
+        buf[strcspn(buf, "\n")] = 0;
+
         char *token = strtok(buf, ":");
         if (strcmp(token, PORT_FILTER) == 0) {
-            token = strtok(NULL, ",");
+            token = strtok(NULL, ":");
 
             struct port_filter filter;
             if (parse_port_filter(token, &filter) < 0) {
@@ -118,7 +120,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
                 .port = filter,
             };
         } else if (strcmp(token, NETMASK_FILTER) == 0) {
-            token = strtok(NULL, ",");
+            token = strtok(NULL, ":");
 
             struct netmask_filter filter;
             if (parse_netmask_filter(token, &filter) < 0) {
@@ -149,6 +151,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
     return NULL;
 }
 
+
 int main(int argc, char **argv) {
     if (argc < 3) {
         printf("error: invalid format\nformat: %s [add/remove] [filter path]\n", argv[0]);
@@ -164,7 +167,9 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        
+        // TODO: 패킷 조립하고 전송하는거 작성하기
+
+        free(filters);        
     } else if (strcmp(action, ACTION_REMOVE) == 0) {
         // TODO: 제거 관련 코드 작성하기
     } else {
