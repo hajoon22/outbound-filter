@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 
 #define ACTION_ADD "add"
@@ -14,8 +15,11 @@
 #define PROTOCOL_TCP "tcp"
 
 enum filter_type {
-    FILTER_PORT,
-    FILTER_NETMASK,
+    SET_PORT_FILTER = 0,
+    REMOVE_PORT_FILTER = 1,
+
+    SET_NETMASK_FILTER = 2,
+    REMOVE_NETMASK_FILTER = 3,
 };
 
 struct port_filter {
@@ -116,7 +120,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             (*filters_len)++;
 
             filters[*filters_len-1] = (struct filter){
-                .type = FILTER_PORT,
+                .type = SET_PORT_FILTER,
                 .port = filter,
             };
         } else if (strcmp(token, NETMASK_FILTER) == 0) {
@@ -133,7 +137,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             (*filters_len)++;
 
             filters[*filters_len-1] = (struct filter){
-                .type = FILTER_NETMASK,
+                .type = SET_NETMASK_FILTER,
                 .netmask = filter,
             };
         }
@@ -151,6 +155,64 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
     return NULL;
 }
 
+size_t build_set_packet(struct filter *f, char **buf) {
+    switch (f->type) {
+        case SET_PORT_FILTER:
+        case REMOVE_PORT_FILTER: {
+            *buf = malloc(4);
+            if (!*buf) return -1;
+
+            **buf = f->type;
+            *(*buf+1) = f->port.protocol;
+
+            uint16_t port = htons(f->port.port);
+            memcpy(*buf+2, &port, 2);
+
+            return 4;
+        }
+        case SET_NETMASK_FILTER:
+        case REMOVE_NETMASK_FILTER: {
+            *buf = malloc(9);
+            if (!*buf) return -1;
+            
+            **buf = f->type;
+
+            uint32_t address = htonl(f->netmask.address);
+            memcpy(*buf+1, &address, 4);
+
+            uint32_t mask = htonl(f->netmask.mask);
+            memcpy(*buf+5, &mask, 4);
+
+            return 9;
+        }
+    };
+
+    return -1;
+}
+
+int build_and_send(struct filter *filters, size_t filters_len) {
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s < 0) return s;
+
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(209);
+    inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr);
+
+    for (int i = 0; i < filters_len; i++) {
+        struct filter *f = &filters[i];
+        
+        char *buf = NULL;
+        size_t len = build_set_packet(f, &buf);
+        if (len < 0) return -1;
+
+        sendto(s, buf, len, 0, (struct sockaddr *)&sin, sizeof(sin));
+        free(buf);
+    }
+    close(s);
+    
+    return 0;
+}
 
 int main(int argc, char **argv) {
     if (argc < 3) {
@@ -167,8 +229,10 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        // TODO: 패킷 조립하고 전송하는거 작성하기
-
+        if (build_and_send(filters, filters_len) < 0) {
+            printf("error: build and send error\n");
+            return 1;
+        }
         free(filters);        
     } else if (strcmp(action, ACTION_REMOVE) == 0) {
         // TODO: 제거 관련 코드 작성하기
