@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#include "cache.h"
 #include "filter.h"
 #include "parser.h"
 
@@ -54,6 +55,10 @@ int build_and_send(struct filter *filters, size_t filters_len) {
 
     for (int i = 0; i < filters_len; i++) {
         struct filter *f = &filters[i];
+        if (add_filter_cache(f) < 0) {
+            close(s);
+            return -1;
+        }
         
         char *buf = NULL;
         size_t len = build_set_packet(f, &buf);
