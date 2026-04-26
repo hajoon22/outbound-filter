@@ -72,8 +72,44 @@ int build_and_send(struct filter *filters, size_t filters_len) {
     return 0;
 }
 
+int read_and_print_filters() {
+    size_t len = 0;
+    struct filter *filters = read_cache(&len);
+    if (!filters) return -1;
+
+    for (int i = 0; i < len; i++) {
+        struct filter *f = &filters[i];
+        switch (f->type) {
+            case SET_PORT_FILTER: {
+                char *protocol;
+                switch (f->port.protocol) {
+                    case 6: {
+                        protocol = "tcp";
+                        break;
+                    }
+
+                    case 17: {
+                        protocol = "udp";
+                        break;
+                    }
+                }
+
+                printf("port:%s:%d\n", protocol, f->port.port);
+                break;
+            }
+            case SET_NETMASK_FILTER: {
+                char address[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &f->netmask.address, address, sizeof(address));
+                printf("netmask:%s%s\n", address, parse_mask_to_str(f->netmask.mask));
+
+                break;
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 2) {
         printf("error: invalid format\nformat: %s [add/remove] [filter path]\n", argv[0]);
         return 1;
     }
@@ -92,6 +128,8 @@ int main(int argc, char **argv) {
             return 1;
         }
         free(filters);        
+    } else if (strcmp(action, ACTION_FILTERS) == 0) {
+        read_and_print_filters();
     } else if (strcmp(action, ACTION_REMOVE) == 0) {
         // TODO: 제거 관련 코드 작성하기
     } else {
