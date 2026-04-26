@@ -110,14 +110,19 @@ int read_and_print_filters() {
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("error: invalid format\nformat: %s [add/remove] [filter path]\n", argv[0]);
+        printf("error: invalid format\nformat: %s [add, remove, filters]\n", argv[0]);
         return 1;
     }
 
-    char *action = argv[1], *path = argv[2];
+    char *action = argv[1];
     if (strcmp(action, ACTION_ADD) == 0) {
+        if (argc < 3) {
+            printf("error: invalid format\nformat: %s add [filter_path]\n", argv[0]);
+            return 1;
+        }
+
         size_t filters_len = 0;
-        struct filter *filters = read_and_parse(path, &filters_len);
+        struct filter *filters = read_and_parse(argv[2], &filters_len);
         if (!filters) {
             printf("error: read and parse error\n");
             return 1;
@@ -127,13 +132,12 @@ int main(int argc, char **argv) {
             printf("error: build and send error\n");
             return 1;
         }
-        free(filters);        
+
+        free(filters);
     } else if (strcmp(action, ACTION_FILTERS) == 0) {
         read_and_print_filters();
-    } else if (strcmp(action, ACTION_REMOVE) == 0) {
-        // TODO: 제거 관련 코드 작성하기
     } else {
-        printf("error: unknown action\nvalid actions: add, remove\n");
+        printf("error: unknown action\ninvalid actions: add, remove, filters\n");
 
         return 1;
     }
