@@ -6,7 +6,18 @@
 
 #include "filter.h"
 
-uint32_t parse_mask(char *mask) {
+char *parse_mask_to_str(uint32_t mask) {
+    switch (mask) {
+        case 0xFFFFFFFF: return "/32";
+        case 0xFFFFFF00: return "/24";
+        case 0xFFFF0000: return "/16";
+        case 0xF0000000: return "/8";
+    }
+
+    return "unknown";
+}
+
+uint32_t parse_mask_to_32(char *mask) {
     if (strcmp(mask, "32") == 0) return 0xFFFFFFFF;
     if (strcmp(mask, "24") == 0) return 0xFFFFFF00;
     if (strcmp(mask, "16") == 0) return 0xFFFF0000;
@@ -54,7 +65,7 @@ int parse_netmask_filter(char *token, struct netmask_filter *filter) {
     netmask = strtok(NULL, "/");
     if (!netmask) return -1;
 
-    filter->mask = parse_mask(netmask);
+    filter->mask = parse_mask_to_32(netmask);
     if (filter->mask < 0) return -1;
 
     return 0;
@@ -62,7 +73,7 @@ int parse_netmask_filter(char *token, struct netmask_filter *filter) {
 
 struct filter *read_and_parse(char *path, size_t *filters_len) {
     FILE *fp = fopen(path, "r");
-    if (fp == NULL) return NULL;
+    if (!fp) return NULL;
 
     char *buf = NULL;
     size_t buf_len = 0;
