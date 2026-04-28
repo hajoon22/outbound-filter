@@ -3,21 +3,15 @@
 
 #include <stdint.h>
 
-#define ACTION_ADD "add"
-#define ACTION_REMOVE "remove"
-
-#define PORT_FILTER "port"
-#define NETMASK_FILTER "netmask"
+#define PORT_FILTER_STR "port"
+#define NETMASK_FILTER_STR "netmask"
 
 #define PROTOCOL_UDP "udp"
 #define PROTOCOL_TCP "tcp"
 
 enum filter_type {
-    SET_PORT_FILTER = 0,
-    REMOVE_PORT_FILTER = 1,
-
-    SET_NETMASK_FILTER = 2,
-    REMOVE_NETMASK_FILTER = 3,
+    PORT_FILTER = 0,
+    NETMASK_FILTER = 2,
 };
 
 struct port_filter {
