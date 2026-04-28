@@ -6,5 +6,6 @@
 
 int add_filter_cache(struct filter *f);
 struct filter *read_cache(size_t *len);
+int remove_filter_cache(struct filter *f);
 
 #endif
