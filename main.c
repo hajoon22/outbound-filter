@@ -9,14 +9,22 @@
 #include "filter.h"
 #include "parser.h"
 
-size_t build_set_packet(struct filter *f, char **buf) {
+enum {
+    ACTION_ADD = 0,
+    ACTION_REMOVE = 1,
+};
+
+#define ACTION_ADD_STR "add"
+#define ACTION_REMOVE_STR "remove"
+#define ACTION_FILTERS_STR "filters"
+
+size_t build_set_packet(int action, struct filter *f, char **buf) {
     switch (f->type) {
-        case SET_PORT_FILTER:
-        case REMOVE_PORT_FILTER: {
+        case PORT_FILTER: {
             *buf = malloc(4);
             if (!*buf) return -1;
 
-            **buf = f->type;
+            **buf = f->type+action;
             *(*buf+1) = f->port.protocol;
 
             uint16_t port = htons(f->port.port);
@@ -24,12 +32,11 @@ size_t build_set_packet(struct filter *f, char **buf) {
 
             return 4;
         }
-        case SET_NETMASK_FILTER:
-        case REMOVE_NETMASK_FILTER: {
+        case NETMASK_FILTER: {
             *buf = malloc(9);
             if (!*buf) return -1;
             
-            **buf = f->type;
+            **buf = f->type+action;
 
             uint32_t address = htonl(f->netmask.address);
             memcpy(*buf+1, &address, 4);
@@ -44,7 +51,7 @@ size_t build_set_packet(struct filter *f, char **buf) {
     return -1;
 }
 
-int build_and_send(struct filter *filters, size_t filters_len) {
+int build_and_send(int action, struct filter *filters, size_t filters_len) {
     int s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s < 0) return s;
 
@@ -55,13 +62,21 @@ int build_and_send(struct filter *filters, size_t filters_len) {
 
     for (int i = 0; i < filters_len; i++) {
         struct filter *f = &filters[i];
-        if (add_filter_cache(f) < 0) {
-            close(s);
-            return -1;
+        
+        if (action == ACTION_ADD) {
+            if (add_filter_cache(f) < 0) {
+                close(s);
+                return -1;
+            }
+        } else if (action == ACTION_REMOVE) {
+            if (remove_filter_cache < 0) {
+                close(s);
+                return -1;
+            }
         }
         
         char *buf = NULL;
-        size_t len = build_set_packet(f, &buf);
+        size_t len = build_set_packet(action, f, &buf);
         if (len < 0) return -1;
 
         sendto(s, buf, len, 0, (struct sockaddr *)&sin, sizeof(sin));
@@ -80,7 +95,7 @@ int read_and_print_filters() {
     for (int i = 0; i < len; i++) {
         struct filter *f = &filters[i];
         switch (f->type) {
-            case SET_PORT_FILTER: {
+            case PORT_FILTER: {
                 char *protocol;
                 switch (f->port.protocol) {
                     case 6: {
@@ -97,7 +112,7 @@ int read_and_print_filters() {
                 printf("port:%s:%d\n", protocol, f->port.port);
                 break;
             }
-            case SET_NETMASK_FILTER: {
+            case NETMASK_FILTER: {
                 char address[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &f->netmask.address, address, sizeof(address));
                 printf("netmask:%s%s\n", address, parse_mask_to_str(f->netmask.mask));
@@ -115,7 +130,7 @@ int main(int argc, char **argv) {
     }
 
     char *action = argv[1];
-    if (strcmp(action, ACTION_ADD) == 0) {
+    if (strcmp(action, ACTION_ADD_STR) == 0) {
         if (argc < 3) {
             printf("error: invalid format\nformat: %s add [filter_path]\n", argv[0]);
             return 1;
@@ -128,15 +143,34 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        if (build_and_send(filters, filters_len) < 0) {
+        if (build_and_send(ACTION_ADD, filters, filters_len) < 0) {
             printf("error: build and send error\n");
             return 1;
         }
 
         free(filters);
-    } else if (strcmp(action, ACTION_FILTERS) == 0) {
+    } else if (strcmp(action, ACTION_FILTERS_STR) == 0) {
         read_and_print_filters();
-    } else {
+    } else if (strcmp(action, ACTION_REMOVE_STR) == 0) {
+        if (argc < 3) {
+            printf("error: invalid format\nformat: %s remove [filter_path]\n", argv[0]);
+            return 1;
+        }
+
+        size_t filters_len = 0;
+        struct filter *filters = read_and_parse(argv[2], &filters_len);
+        if (!filters) {
+            printf("error: read and parse error\n");
+            return 1;
+        }
+
+        if (build_and_send(ACTION_REMOVE, filters, filters_len) < 0) {
+            printf("error: build and send error\n");
+            return 1;
+        }
+
+        free(filters);     
+    }else {
         printf("error: unknown action\ninvalid actions: add, remove, filters\n");
 
         return 1;
