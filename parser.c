@@ -83,7 +83,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
         buf[strcspn(buf, "\n")] = 0;
 
         char *token = strtok(buf, ":");
-        if (strcmp(token, PORT_FILTER) == 0) {
+        if (strcmp(token, PORT_FILTER_STR) == 0) {
             token = strtok(NULL, ":");
 
             struct port_filter filter;
@@ -97,10 +97,10 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             (*filters_len)++;
 
             filters[*filters_len-1] = (struct filter){
-                .type = SET_PORT_FILTER,
+                .type = PORT_FILTER,
                 .port = filter,
             };
-        } else if (strcmp(token, NETMASK_FILTER) == 0) {
+        } else if (strcmp(token, NETMASK_FILTER_STR) == 0) {
             token = strtok(NULL, ":");
 
             struct netmask_filter filter;
@@ -114,7 +114,7 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             (*filters_len)++;
 
             filters[*filters_len-1] = (struct filter){
-                .type = SET_NETMASK_FILTER,
+                .type = NETMASK_FILTER,
                 .netmask = filter,
             };
         }
