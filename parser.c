@@ -7,14 +7,13 @@
 #include "filter.h"
 
 char *parse_mask_to_str(uint32_t mask) {
-    switch (mask) {
-        case 0xFFFFFFFF: return "/32";
-        case 0xFFFFFF00: return "/24";
-        case 0xFFFF0000: return "/16";
-        case 0xF0000000: return "/8";
-    }
+    char *buf = malloc(8);
+    if (!buf) return NULL;
 
-    return "unknown";
+    int mask_int = __builtin_popcount(mask);
+    snprintf(buf, 8, "/%d", mask_int);
+
+    return buf;
 }
 
 uint32_t parse_mask_to_32(char *mask_str) {
