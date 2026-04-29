@@ -34,18 +34,9 @@ uint32_t parse_mask_to_32(char *mask_str) {
     return result;
 }
 
-/*uint32_t parse_mask_to_32(char *mask) {
-    if (strcmp(mask, "32") == 0) return 0xFFFFFFFF;
-    if (strcmp(mask, "24") == 0) return 0xFFFFFF00;
-    if (strcmp(mask, "16") == 0) return 0xFFFF0000;
-    if (strcmp(mask, "8") == 0) return 0xFF000000;
-
-    return 0;
-}*/
-
 uint8_t parse_protocol(char *protocol_str) {
-    if (strcmp(protocol_str, PROTOCOL_TCP) == 0) return 6;
-    if (strcmp(protocol_str, PROTOCOL_UDP) == 0) return 17;
+    if (strcmp(protocol_str, "tcp") == 0) return 6;
+    if (strcmp(protocol_str, "udp") == 0) return 17;
 
     return 0;
 }
