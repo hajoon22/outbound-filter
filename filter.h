@@ -6,9 +6,6 @@
 #define PORT_FILTER_STR "port"
 #define NETMASK_FILTER_STR "netmask"
 
-#define PROTOCOL_UDP "udp"
-#define PROTOCOL_TCP "tcp"
-
 enum filter_type {
     PORT_FILTER = 0,
     NETMASK_FILTER = 2,
