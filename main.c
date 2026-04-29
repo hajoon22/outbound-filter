@@ -115,7 +115,10 @@ int read_and_print_filters() {
             case NETMASK_FILTER: {
                 char address[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &f->netmask.address, address, sizeof(address));
-                printf("netmask:%s%s\n", address, parse_mask_to_str(f->netmask.mask));
+                
+                char *mask = parse_mask_to_str(f->netmask.mask);
+                printf("netmask:%s%s\n", address, mask);
+                free(mask);
 
                 break;
             }
