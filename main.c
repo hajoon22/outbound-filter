@@ -69,7 +69,7 @@ int build_and_send(int action, struct filter *filters, size_t filters_len) {
                 return -1;
             }
         } else if (action == ACTION_REMOVE) {
-            if (remove_filter_cache < 0) {
+            if (remove_filter_cache(f) < 0) {
                 close(s);
                 return -1;
             }
