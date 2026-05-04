@@ -11,6 +11,14 @@ enum filter_type {
     NETMASK_FILTER = 2,
 };
 
+enum {
+    ERROR_INVALID_NETMASK = -1,
+    ERROR_INVALID_PORT = -2,
+    ERROR_INVALID_PROTOCOL = -3,
+    ERROR_INVALID_ADDRESS = -4,
+    ERROR_INVALID_FORMAT = -5,
+};
+
 struct port_filter {
     uint8_t protocol;
     uint16_t port;
