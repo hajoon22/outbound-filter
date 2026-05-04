@@ -15,23 +15,22 @@ char *parse_mask_to_str(uint32_t mask) {
 
     return buf;
 }
-
-uint32_t parse_mask_to_32(char *mask_str) {
+ 
+int parse_mask_to_32(char *mask_str, uint32_t *result) {
     int mask = atoi(mask_str);
     if (mask <= 0 || mask > 32) {
-        return -1;
+        return ERROR_INVALID_NETMASK;
     }
 
-    uint32_t result = 0;
     for (int i = 0; i < mask/8; i++) {
-        result |= (0xFF << (24-i*8));
+        *result |= (0xFF << (24-i*8));
     }
 
     if (mask%8 > 0) {
-        result |= (((0xFF << (8-mask%8)) & 0xFF) << (24-(mask/8)*8));
+        *result |= (((0xFF << (8-mask%8)) & 0xFF) << (24-(mask/8)*8));
     }
 
-    return result;
+    return 0;
 }
 
 uint8_t parse_protocol(char *protocol_str) {
@@ -41,25 +40,32 @@ uint8_t parse_protocol(char *protocol_str) {
     return 0;
 }
 
-uint16_t parse_port(char *port_str) {
+int parse_port(char *port_str) {
     char *endptr;
-    uint16_t port = strtol(port_str, &endptr, 10);
-    if (port_str == endptr || *endptr != '\0') return 0;
+    long port = strtol(port_str, &endptr, 10);
+    if (port_str == endptr || *endptr != '\0') {
+        return ERROR_INVALID_PORT;
+    } else if (port < 1 || port > 65535) {
+        return ERROR_INVALID_PORT;
+    }
 
     return port;
 }
 
+
 int parse_port_filter(char *token, struct port_filter *filter) {
     if (!token) return -1;
     filter->protocol = parse_protocol(token);
-    if (filter->protocol == 0) return -1;
+    if (filter->protocol == 0) return ERROR_INVALID_PROTOCOL;
 
     token = strtok(NULL, ":");
-    if (!token) return -1;
+    if (!token) return ERROR_INVALID_FORMAT;
 
-    filter->port = parse_port(token);
-    if (filter->port == 0) return -1;
-
+    int n = parse_port(token);
+    if (n < 0) return n;
+    
+    filter->port = (uint16_t)n;
+    
     return 0;
 }
 
@@ -68,14 +74,17 @@ int parse_netmask_filter(char *token, struct netmask_filter *filter) {
     char *netmask = strtok(token, "/");
 
     filter->address = inet_addr(netmask);
-    if (filter->address == INADDR_NONE) return -1;
+    if (filter->address == INADDR_NONE) return ERROR_INVALID_ADDRESS;
     
     netmask = strtok(NULL, "/");
-    if (!netmask) return -1;
+    if (!netmask) return ERROR_INVALID_NETMASK;
 
-    filter->mask = parse_mask_to_32(netmask);
-    if (filter->mask < 0) return -1;
-
+    uint32_t mask = 0;
+    int n = parse_mask_to_32(netmask, &mask);
+    if (n < 0) return n;
+    
+    filter->mask = mask;
+    
     return 0;
 }
 
@@ -95,7 +104,15 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             token = strtok(NULL, ":");
 
             struct port_filter filter;
-            if (parse_port_filter(token, &filter) < 0) {
+            switch (parse_port_filter(token, &filter)) {
+                case ERROR_INVALID_PORT:
+                printf("error: parse port filter: invalid port\n");
+                goto error;
+                case ERROR_INVALID_PROTOCOL:
+                printf("error: parse port filter: invalid protocol\n");
+                goto error;
+                case ERROR_INVALID_FORMAT:
+                printf("error: parse port filter: invalid format\n");
                 goto error;
             }
 
@@ -112,8 +129,13 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             token = strtok(NULL, ":");
 
             struct netmask_filter filter;
-            if (parse_netmask_filter(token, &filter) < 0) {
+            switch (parse_netmask_filter(token, &filter)) {
+                case ERROR_INVALID_ADDRESS:
+                printf("error: parse netmask filter: invalid address\n");
                 goto error;
+                case ERROR_INVALID_NETMASK:
+                printf("error: parse netmask filter: invalid netmask\n");
+                goto error;                
             }
 
             struct filter *tmp = realloc(filters, sizeof(struct filter)*(*filters_len+1));
