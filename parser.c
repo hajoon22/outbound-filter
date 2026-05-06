@@ -88,6 +88,55 @@ int parse_netmask_filter(char *token, struct netmask_filter *filter) {
     return 0;
 }
 
+char *read_and_parse_signature(char *path, size_t *len) {
+    FILE *fp = fopen(path, "rb");
+    if (!fp) return NULL;
+
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fclose(fp);
+        return NULL;
+    }
+
+    long size = ftell(fp);
+    if (size < 0) {
+        fclose(fp);
+        return NULL;
+    }
+    *len = (size_t)size;
+    rewind(fp);
+
+
+    char *buffer = malloc(size);
+    if (!buffer) {
+        fclose(fp);
+        return NULL;
+    }
+
+    if (fread(buffer, 1, size, fp) != size) {
+        free(buffer);
+        fclose(fp);
+        return NULL;
+    }
+    fclose(fp);
+
+    return buffer;
+}
+
+// signature:path
+// [type(1byte)][signature[nbyte]]
+int parse_signature_filter(char *token, struct signature_filter *filter) {
+    if (!token) return -1;
+    
+    size_t signature_len = 0;
+    filter->signature = read_and_parse_signature(token, &signature_len);
+    if (!filter->signature) {
+        return -1; // READ_ERROR
+    }
+    filter->signature_len = signature_len;
+
+    return 0;
+}
+
 struct filter *read_and_parse(char *path, size_t *filters_len) {
     FILE *fp = fopen(path, "r");
     if (!fp) return NULL;
@@ -146,6 +195,24 @@ struct filter *read_and_parse(char *path, size_t *filters_len) {
             filters[*filters_len-1] = (struct filter){
                 .type = NETMASK_FILTER,
                 .netmask = filter,
+            };
+        } else if (strcmp(token, SIGNATURE_FILTER_STR) == 0) {
+            token = strtok(NULL, ":");
+
+            struct signature_filter filter;
+            if (parse_signature_filter(token, &filter) < 0) {
+                printf("error: signature filter parse error\n");
+                goto error;
+            }
+
+            struct filter *tmp = realloc(filters, sizeof(struct filter)*(*filters_len+1));
+            if (!tmp) goto error;
+            filters = tmp;
+            (*filters_len)++;
+
+            filters[*filters_len-1] = (struct filter){
+                .type = SIGNATURE_FILTER,
+                .signature = filter,
             };
         }
     }
