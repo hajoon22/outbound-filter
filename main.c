@@ -44,6 +44,17 @@ size_t build_set_packet(int action, struct filter *f, char **buf) {
 
             return 9;
         }
+
+        case SIGNATURE_FILTER: {
+            *buf = malloc(f->signature.signature_len+1);
+            if (!*buf) return -1;
+
+            **buf = f->type+action;
+            memcpy(*buf+1, f->signature.signature, f->signature.signature_len);
+            free(f->signature.signature);
+
+            return f->signature.signature_len+1;
+        }
     };
 
     return -1;
