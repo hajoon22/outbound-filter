@@ -2,7 +2,7 @@
 Parses filter rules and sends them to the [lkm-outbound-filter](https://github.com/paper209/lkm-outbound-filter) over UDP
 
 ## Supported Filters
-- **Signature Filter** (TCP, UDP)  
+- **Signature Filter** (TCP, UDP, ICMP)  
    Filters packets by inspecting payloads and matching specific signatures (DPI).
 
 - **Port Filter** (TCP, UDP)  
