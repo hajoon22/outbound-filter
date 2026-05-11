@@ -36,7 +36,8 @@ int parse_mask_to_32(char *mask_str, uint32_t *result) {
 uint8_t parse_protocol(char *protocol_str) {
     if (strcmp(protocol_str, "tcp") == 0) return 6;
     if (strcmp(protocol_str, "udp") == 0) return 17;
-
+    if (strcmp(protocol_str, "icmp") == 0) return 1;
+    
     return 0;
 }
 
