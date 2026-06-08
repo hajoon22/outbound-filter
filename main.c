@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#include "filter.h"
-#include "parser.h"
+#include "src/filter.h"
+#include "src/parser/parser.h"
 
 enum {
     ACTION_ADD = 0,
